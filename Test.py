@@ -5,60 +5,50 @@ Created on Sat Sep 26 21:31:53 2020
 
 @author: frank
 """
+from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtWidgets import QApplication, QMainWindow, QGridLayout, QWidget, QTableWidget, QTableWidgetItem
 from PyQt5.QtCore import QSize, Qt
+# 
  
- 
-class MainWindow(QMainWindow):
-    # Override class constructor
-    def __init__(self):
-        # You must call the super class method
-        QMainWindow.__init__(self)
- 
-        self.setMinimumSize(QSize(480, 80))         # Set sizes 
-        self.setWindowTitle("Работа с QTableWidget")    # Set the window title
-        central_widget = QWidget(self)              # Create a central widget
-        self.setCentralWidget(central_widget)       # Install the central widget
- 
-        grid_layout = QGridLayout(self)         # Create QGridLayout
-        central_widget.setLayout(grid_layout)   # Set this layout in central widget
- 
-        table = QTableWidget(self)  # Create a table
-        table.setColumnCount(3)     #Set three columns
-        table.setRowCount(2)        # and one row
- 
-        # Set the table headers
-        table.setHorizontalHeaderLabels(["Header 1", "Header 2", "Header 3"])
- 
-        #Set the tooltips to headings
-        table.horizontalHeaderItem(0).setToolTip("Column 1 ")
-        table.horizontalHeaderItem(1).setToolTip("Column 2 ")
-        table.horizontalHeaderItem(2).setToolTip("Column 3 ")
- 
-        # Set the alignment to the headers
-        table.horizontalHeaderItem(0).setTextAlignment(Qt.AlignLeft)
-        table.horizontalHeaderItem(1).setTextAlignment(Qt.AlignHCenter)
-        table.horizontalHeaderItem(2).setTextAlignment(Qt.AlignRight)
- 
-        # Fill the first line
-        table.setItem(0, 0, QTableWidgetItem("Text in column 1"))
-        table.setItem(0, 1, QTableWidgetItem("Text in column 2"))
-        table.setItem(0, 2, QTableWidgetItem("Text in column 3"))
+class Ui_MainWindow(object):
+    def setupUi(self, MainWindow):
+        MainWindow.setObjectName("MainWindow")
+        MainWindow.resize(300, 300)
+        self.centralwidget = QtWidgets.QWidget(MainWindow)
+        self.centralwidget.setObjectName("centralwidget")
+        self.setCentralWidget(self.centralwidget)
+        self.pushButton = QtWidgets.QPushButton(self.centralwidget)
+        self.pushButton.setGeometry(QtCore.QRect(50, 110, 75, 23))
+        self.pushButton.setObjectName("pushButton")
+        self.textEditSearch = QtWidgets.QTextEdit(self.centralwidget)
+        self.textEditSearch.setGeometry(QtCore.QRect(50,200,75,23))
+        self.textEditSearch.setObjectName("textEditSearch")
+
+
+        self.retranslateUi(MainWindow)
+        QtCore.QMetaObject.connectSlotsByName(MainWindow)
+
+    def retranslateUi(self, MainWindow):
+        _translate = QtCore.QCoreApplication.translate
+        MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
+        self.pushButton.setText(_translate("MainWindow", "PushButton"))
         
-        # Fill the second line
-        table.setItem(1, 0, QTableWidgetItem("1"))
-        table.setItem(1, 1, QTableWidgetItem("2"))
-        table.setItem(1, 2, QTableWidgetItem("3"))
- 
-        # Do the resize of the columns by content
-        table.resizeColumnsToContents()
- 
-        grid_layout.addWidget(table, 0, 0)   # Adding the table to the grid
- 
- 
+        
+class MainWindow(QMainWindow, Ui_MainWindow):
+    def __init__(self, parent=None):
+        QMainWindow.__init__(self, parent=parent)
+        self.setupUi(self)
+
+    def keyPressEvent(self, e):
+        print(e.key())
+        if e.key() == Qt.Key_F5:
+            self.close()
+
 if __name__ == "__main__":
     import sys
-    app = QApplication(sys.argv)
-    mw = MainWindow()
-    mw.show()
-    sys.exit(app.exec())
+    app = QtCore.QCoreApplication.instance()
+    if app is None:
+        app = QtWidgets.QApplication(sys.argv)
+    w = MainWindow()
+    w.show()
+    sys.exit(app.exec_())
