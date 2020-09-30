@@ -126,30 +126,24 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         logging.debug("save table is done")
     
     def buttonMemory_on_click(self):
-        df = self.df.sample(10).copy()
+        df = self.df.sample(10).copy().reset_index(drop=True)
         df_gap = df.copy()
         memChoice = self.comboBox.currentText()
-        print("Choice: {}".format(memChoice))
         for r in range(len(df_gap)):
-            print(r)
-            gap_columns = self.columnNames
+            gap_columns= []
+            gap_columns.extend(self.columnNames)
             if memChoice == 'Randomly':
-                print(1)
                 gap_column_idx = random.sample(range(len(gap_columns)), 3)
                 gap_columns = [gap_columns[i] for i in gap_column_idx]
             else:
-                print(2)
                 gap_columns.remove(memChoice)
                 gap_column_idx = random.sample(range(len(gap_columns)), 2)
                 gap_columns = [gap_columns[i] for i in gap_column_idx]
                 gap_columns.append(memChoice)
-            print(gap_columns)
-            logging.debug("Gapping row {} with {}".format(r, gap_columns))
             for gap in gap_columns:
-                print(df_gap.loc[r, gap])
                 df_gap.loc[r, gap] = ''
-        print("Prepare to show gapped table")
         self.updateTable(df_gap)
+        self.df_gap = df_gap
         self.buttonCheck.setHidden(False)
         self.buttonBack.setHidden(False)
         self.buttonSave.setHidden(True)
