@@ -3,11 +3,11 @@
 block_cipher = None
 
 
-a = Analysis(['main.py'],
-             pathex=['/home/frank/LinuxWorkFolder/For daily life/Dutch/WerkwoordenMaster'],
+a = Analysis(['WerkwoordenMaster.py'],
+             pathex=['D:\\LinuxWorkFolder\\For daily life\\Dutch\\WerkwoordenMaster'],
              binaries=[],
              datas=[],
-             hiddenimports=[],
+             hiddenimports=['pkg_resources.py2_warn'],
              hookspath=[],
              runtime_hooks=[],
              excludes=[],
@@ -21,7 +21,7 @@ exe = EXE(pyz,
           a.scripts,
           [],
           exclude_binaries=True,
-          name='main',
+          name='WerkwoordenMaster',
           debug=False,
           bootloader_ignore_signals=False,
           strip=False,
@@ -34,4 +34,4 @@ coll = COLLECT(exe,
                strip=False,
                upx=True,
                upx_exclude=[],
-               name='main')
+               name='WerkwoordenMaster')
