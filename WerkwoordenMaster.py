@@ -23,9 +23,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         self.xlsxFile = os.path.join(os.getcwd(), 'Werkwoorden_Lijst.xlsx')
         self.df = pd.read_excel(self.xlsxFile)
-        self.df = self.df.drop_duplicates(subset = ["Infinitief"])
-        self.df = self.df.fillna('').reset_index(drop=True)
-#        self.df_backup = self.df.copy()
+        self.df = self.df.drop_duplicates(subset = ["Infinitief"]).reset_index(drop=True)
+        self.df = self.df.fillna('')
+        self.df_backup = self.df.copy()
         self.labelSearchResult.setHidden(True)
         self.textEditSearch.setAlignment(QtCore.Qt.AlignBottom)
 #        central_widget = QtWidgets.QWidget(self)              # Create a central widget
@@ -60,13 +60,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if not self.resetMode and not self.searchMode:
             if self.buttonSave.isHidden and not self.memoryMode:
                 self.buttonSave.setHidden(False)
-#            row = item.row()
-#            col = item.column()
-#            text = self.tableWidget.item(row, col).text()
-#            if row == len(self.df_backup):
-#                self.df_backup.loc[len(self.df_backup), :] = ''
-#            self.df_backup.iloc[row, col] = text
-#            self.tableWidget.resizeColumnsToContents()
+            row = item.row()
+            col = item.column()
+            text = self.tableWidget.item(row, col).text()
+            if row == len(self.df_backup):
+                self.df_backup.loc[len(self.df_backup), :] = ''
+            self.df_backup.iloc[row, col] = text
+            self.tableWidget.resizeColumnsToContents()
     
 #    def keyPressEvent(self, e):
 #        print(e.key())
@@ -127,14 +127,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.buttonCheck.setHidden(True)
         logging.debug("searching is done")
         
-    def getCurrentTable(self):
-        numRow = self.tableWidget.rowCount()-1
-        numCol = self.tableWidget.columnCount()
-        self.df_backup = pd.DataFrame(np.zeros([numRow, numCol], dtype=float), columns = self.df.columns)
-        for r in range(numRow):
-            for c in range(numCol):
-                self.df_backup.iloc[r,c] = self.tableWidget.item(r,c).text()
-    
     def saveTable(self):
         book = load_workbook(self.xlsxFile)
         writer = pd.ExcelWriter(self.xlsxFile, engine='openpyxl')
@@ -173,7 +165,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         
     
     def buttonSave_on_click(self):
-        self.getCurrentTable()
         if self.df.equals(self.df_backup):
             logging.debug("Same tables, nothing to be saved")
         else:
