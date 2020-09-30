@@ -13,6 +13,7 @@ import sys
 from itertools import combinations 
 from openpyxl import load_workbook
 import logging
+import random
 from MainWindow import Ui_MainWindow
 
 
@@ -125,9 +126,29 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         logging.debug("save table is done")
     
     def buttonMemory_on_click(self):
-        df = self.df.sample(10)
-        gapColumns = ['Stam', 'Infinitief', 'Impefectum', 'Zijn', 'Perfectum', 'English']
+        df = self.df.sample(10).copy()
         df_gap = df.copy()
+        memChoice = self.comboBox.currentText()
+        print("Choice: {}".format(memChoice))
+        for r in range(len(df_gap)):
+            print(r)
+            gap_columns = self.columnNames
+            if memChoice == 'Randomly':
+                print(1)
+                gap_column_idx = random.sample(range(len(gap_columns)), 3)
+                gap_columns = [gap_columns[i] for i in gap_column_idx]
+            else:
+                print(2)
+                gap_columns.remove(memChoice)
+                gap_column_idx = random.sample(range(len(gap_columns)), 2)
+                gap_columns = [gap_columns[i] for i in gap_column_idx]
+                gap_columns.append(memChoice)
+            print(gap_columns)
+            logging.debug("Gapping row {} with {}".format(r, gap_columns))
+            for gap in gap_columns:
+                print(df_gap.loc[r, gap])
+                df_gap.loc[r, gap] = ''
+        print("Prepare to show gapped table")
         self.updateTable(df_gap)
         self.buttonCheck.setHidden(False)
         self.buttonBack.setHidden(False)
@@ -177,11 +198,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.tableWidget.setColumnCount(self.numTableCol)     #Set number of columns
         self.tableWidget.setRowCount(len(self.df))        # and one row
  
-        # Set the table headers
-        self.tableWidget.setHorizontalHeaderLabels(columnNames)
+        # Set the table
+        self.tableWidget.setHorizontalHeaderLabels(self.columnNames)
         self.updateTable()
         self.updateCorpusDict()
         
+        # Set the list
+        self.comboBox.addItems(['Randomly']+self.columnNames)
 #        self.tableWidths = [self.tableWidget.columnWidth(i) for i in range()
 #        self.tableWidget.Box.
         
