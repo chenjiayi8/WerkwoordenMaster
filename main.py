@@ -11,8 +11,8 @@ import pandas as pd
 import numpy as np
 import sys
 from itertools import combinations 
-
-
+from openpyxl import load_workbook
+import logging
 from MainWindow import Ui_MainWindow
 
 
@@ -22,7 +22,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         self.xlsxFile = os.path.join(os.getcwd(), 'Resources', 'Werkwoorden_Lijst.xlsx')
         self.df = pd.read_excel(self.xlsxFile)
-        self.df = self.df.drop_duplicates(subset = ["Infinitief"])
+        self.df = self.df.drop_duplicates(subset = ["Infinitief"]).reset_index(drop=True)
+        self.df_backup = self.df.copy()
         self.labelSearchResult.setHidden(True)
         self.textEditSearch.setAlignment(QtCore.Qt.AlignBottom)
 #        central_widget = QtWidgets.QWidget(self)              # Create a central widget
@@ -32,53 +33,120 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 #        central_widget.setLayout(grid_layout)   # Set this layout in central widget
 # 
         self.initialiseTable()
+        self.isShownMainTable = True
         self.buttonCheck.clicked.connect(self.buttonCheck_on_click)
         self.buttonMemory.clicked.connect(self.buttonMemory_on_click)
+        self.buttonBack.clicked.connect(self.buttonBack_on_click)
         self.buttonSave.clicked.connect(self.buttonSave_on_click)
         self.buttonQuit.clicked.connect(self.buttonQuit_on_click)
         self.textEditSearch.textChanged.connect(self.search_as_you_type)
+#        self.tableWidget.cellChanged.connect(self.prepareForSaving)
+        self.tableWidget.itemChanged.connect(self.prepareForSaving)
+        self.buttonCheck.setHidden(True)
+        self.buttonSave.setHidden(True)
+        self.buttonBack.setHidden(True)
+        self.memoryMode = False
+        self.resetMode = False
+        self.searchMode = False
+        logging.debug("Initialisation is done")
 #        grid_layout.addWidget(label1, 0, 0) 
 #        grid_layout.addWidget(button1, 1, 0) 
 #        grid_layout.addWidget(button2, 2, 0) 
 #        grid_layout.addWidget(self.table, 2, 1)   # Adding the table to the grid
     
-    def keyPressEvent(self, e):
-        print(e.key())
-#        self.buttonSearch_on_click()
-        if e.key() == QtCore.Qt.Key_F5:
-            self.close()
-            
+    def prepareForSaving(self, item):
+        if not self.resetMode and not self.searchMode:
+            if self.buttonSave.isHidden and not self.memoryMode:
+                self.buttonSave.setHidden(False)
+            row = item.row()
+            col = item.column()
+            text = self.tableWidget.item(row, col).text()
+            if row == len(self.df_backup):
+                self.df_backup.loc[len(self.df_backup), :] = ''
+            self.df_backup.iloc[row, col] = text
+            self.tableWidget.resizeColumnsToContents()
+    
+#    def keyPressEvent(self, e):
+#        print(e.key())
+#        if e.key() == QtCore.Qt.Key_F5:
+#            self.close()
+    
+    def resetTable(self):
+        self.resetMode = True
+        self.updateTable()    
+        self.resetMode = False
+        logging.debug("reseting table done")
+        
+    
+    def buttonBack_on_click(self):
+        self.resetTable()
+        self.memoryMode = False
+        self.buttonCheck.setHidden(True)
+        self.buttonBack.setHidden(True)
+    
     def buttonCheck_on_click(self):
         self.tableWidget.item(2,2).setForeground(QtGui.QBrush(QtGui.QColor(0, 255, 0)))
         self.tableWidget.item(3,4).setForeground(QtGui.QBrush(QtGui.QColor(255, 0, 0)))
-        print('button check click')
+        logging.debug("check results done")
         
     def search_as_you_type(self):
+        logging.debug("start to search")
         self.labelSearchResult.setHidden(True)
+        self.searchMode = True
         string = self.textEditSearch.toPlainText()
         if len(string) > 0:
+            logging.debug("search word {}".format(string))
             if string in self.corpusDict:
                 targetRows = self.corpusDict[string]
 #                if len(targetRows) == 1:
 #                    targetRows = targetRows[0]
                 df = self.df.iloc[targetRows, :]
                 self.updateTable(df)
+                logging.debug("find word {}".format(string))
             else:
                 self.labelSearchResult.setHidden(False)
                 self.labelSearchResult.setText("Nothing is found")
+                logging.debug("word {} is not found".format(string))
         else:
-            self.updateTable()
+            self.resetTable()
+        self.searchMode = False
+        self.buttonSave.setHidden(True)
+        self.buttonBack.setHidden(True)
+        self.buttonCheck.setHidden(True)
+        logging.debug("searching is done")
         
+    def saveTable(self):
+        book = load_workbook(self.xlsxFile)
+        writer = pd.ExcelWriter(self.xlsxFile, engine='openpyxl')
+        writer.book = book
+        writer.sheets = {ws.title: ws for ws in book.worksheets}
+        self.df_backup.to_excel(writer, sheet_name='Sheet1', startrow=1, header=False,index=False)
+        writer.save()
+        logging.debug("save table is done")
+    
     def buttonMemory_on_click(self):
         df = self.df.sample(10)
-        self.updateTable(df)
-        print('button memory click')
+        gapColumns = ['Stam', 'Infinitief', 'Impefectum', 'Zijn', 'Perfectum', 'English']
+        df_gap = df.copy()
+        self.updateTable(df_gap)
+        self.buttonCheck.setHidden(False)
+        self.buttonBack.setHidden(False)
+        self.buttonSave.setHidden(True)
+        self.memoryMode = True
+        logging.debug("enter memory mode")
         
+    
     def buttonSave_on_click(self):
-        print('button save click')
+        if self.df.equals(self.df_backup):
+            logging.debug("Same tables, nothing to be saved")
+        else:
+            self.saveTable()
+            logging.debug("New table is saved")
+            self.df = self.df_backup.copy()
         
     def buttonQuit_on_click(self):
-        print('button quit click')
+        logging.debug('button quit click')
+        #popout dialog if df changed
         self.close()
     
     def getCorpusList(self, string):
@@ -104,8 +172,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     
     
     def initialiseTable(self):
-        columnNames = list(self.df.columns)
-        self.numTableCol = len(columnNames)
+        self.columnNames = list(self.df.columns)
+        self.numTableCol = len(self.columnNames)
         self.tableWidget.setColumnCount(self.numTableCol)     #Set number of columns
         self.tableWidget.setRowCount(len(self.df))        # and one row
  
@@ -126,7 +194,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.emptyTable()
         if len(df) == 0:
             df = self.df
-        self.tableWidget.setRowCount(len(df))
+            editMode = True
+        else:
+            editMode = False
+        if editMode:
+            self.tableWidget.setRowCount(len(df)+1)
+        else:
+            self.tableWidget.setRowCount(len(df))
         for c in range(self.numTableCol):
 #            self.table.horizontalHeaderItem(c).setTextAlignment(Qt.AlignHCenter)
             for r in range(len(df)):
@@ -137,11 +211,14 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     else:
                         item = str(item)
                 self.tableWidget.setItem(r, c, QtWidgets.QTableWidgetItem(item))
+            if editMode and  r == len(df) - 1:#add an empty row for adding new words
+                self.tableWidget.setItem(r+1, c, QtWidgets.QTableWidgetItem(''))
         self.tableWidget.resizeColumnsToContents()
 #        self.tableWidget.horizontalHeader().setStretchLastSection(True)
                 
  
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG, filename=os.path.join(os.getcwd(), 'log.txt'), format='%(asctime)s :: %(levelname)s :: %(message)s')
     import sys
 #    app = QtWidgets.QApplication(sys.argv)
     app = QtCore.QCoreApplication.instance()
