@@ -21,9 +21,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
         QtWidgets.QMainWindow.__init__(self, parent=parent)
         self.setupUi(self)
-        self.xlsxFile = os.path.join(os.getcwd(), 'Resources', 'Werkwoorden_Lijst.xlsx')
+        self.xlsxFile = os.path.join(os.getcwd(), 'Werkwoorden_Lijst.xlsx')
         self.df = pd.read_excel(self.xlsxFile)
         self.df = self.df.drop_duplicates(subset = ["Infinitief"]).reset_index(drop=True)
+        self.df = self.df.fillna('')
         self.df_backup = self.df.copy()
         self.labelSearchResult.setHidden(True)
         self.textEditSearch.setAlignment(QtCore.Qt.AlignBottom)
@@ -86,8 +87,18 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.buttonBack.setHidden(True)
     
     def buttonCheck_on_click(self):
-        self.tableWidget.item(2,2).setForeground(QtGui.QBrush(QtGui.QColor(0, 255, 0)))
-        self.tableWidget.item(3,4).setForeground(QtGui.QBrush(QtGui.QColor(255, 0, 0)))
+        for r in range(self.tableWidget.rowCount()):
+            for c in range(self.tableWidget.columnCount()):
+                value_correct = self.df_gap_origin.iloc[r,c]
+                if type(value_correct) == str and self.df_gap.iloc[r,c] != value_correct: #must be a gap
+                    value_user = self.tableWidget.item(r, c).text()
+                    if value_user == value_correct:# correct answer mark as green
+                        self.tableWidget.item(r,c).setForeground(QtGui.QBrush(QtGui.QColor(0, 255, 0)))
+                    else:#fill correct value and mark as red
+                        self.tableWidget.setItem(r, c, QtWidgets.QTableWidgetItem(value_correct))
+                        self.tableWidget.item(r,c).setForeground(QtGui.QBrush(QtGui.QColor(255, 0, 0)))
+                    self.tableWidget.item(r,c).setBackground(QtGui.QBrush(QtGui.QColor(230, 230, 230)))
+        self.buttonCheck.setHidden(True)
         logging.debug("check results done")
         
     def search_as_you_type(self):
@@ -126,23 +137,25 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         logging.debug("save table is done")
     
     def buttonMemory_on_click(self):
+        difficulty = 1
         df = self.df.sample(10).copy().reset_index(drop=True)
+        self.df_gap_origin = df.copy()
         df_gap = df.copy()
         memChoice = self.comboBox.currentText()
         for r in range(len(df_gap)):
             gap_columns= []
             gap_columns.extend(self.columnNames)
             if memChoice == 'Randomly':
-                gap_column_idx = random.sample(range(len(gap_columns)), 3)
+                gap_column_idx = random.sample(range(len(gap_columns)), difficulty)
                 gap_columns = [gap_columns[i] for i in gap_column_idx]
             else:
                 gap_columns.remove(memChoice)
-                gap_column_idx = random.sample(range(len(gap_columns)), 2)
+                gap_column_idx = random.sample(range(len(gap_columns)), difficulty-1)
                 gap_columns = [gap_columns[i] for i in gap_column_idx]
                 gap_columns.append(memChoice)
             for gap in gap_columns:
                 df_gap.loc[r, gap] = ''
-        self.updateTable(df_gap)
+        self.updateTable(df_gap, gapMode=True)
         self.df_gap = df_gap
         self.buttonCheck.setHidden(False)
         self.buttonBack.setHidden(False)
@@ -207,7 +220,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.tableWidget.removeRow(r)
         self.tableWidget.setRowCount(0)
     
-    def updateTable(self, df=[]):
+    def updateTable(self, df=[], gapMode=False):
         self.emptyTable()
         if len(df) == 0:
             df = self.df
@@ -228,6 +241,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     else:
                         item = str(item)
                 self.tableWidget.setItem(r, c, QtWidgets.QTableWidgetItem(item))
+                if gapMode:
+                    if type(df.iloc[r,c]) == str and df.iloc[r,c] != self.df_gap_origin.iloc[r,c]:
+                        self.tableWidget.item(r,c).setBackground(QtGui.QBrush(QtGui.QColor(230, 230, 230)))
             if editMode and  r == len(df) - 1:#add an empty row for adding new words
                 self.tableWidget.setItem(r+1, c, QtWidgets.QTableWidgetItem(''))
         self.tableWidget.resizeColumnsToContents()
