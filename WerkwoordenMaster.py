@@ -88,10 +88,14 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.comboBoxRangeEnd.addItems(items[startIdx:])
             self.comboBoxRangeEnd.setCurrentText(items[-1])
         else:
-            currentEndIdx = items.index(self.comboBoxRangeEnd.currentText())
+            currentEndItem = self.comboBoxRangeEnd.currentText()
+            currentEndIdx = items.index(currentEndItem)
+            self.comboBoxRangeEnd.clear()
             self.comboBoxRangeEnd.addItems(items[startIdx:])
             if currentEndIdx < startIdx:
                 self.comboBoxRangeEnd.setCurrentText(items[-1])
+            else:
+                self.comboBoxRangeEnd.setCurrentText(currentEndItem)
     
     def prepareForMemoryMode(self):
         if not self.memoryMode:
