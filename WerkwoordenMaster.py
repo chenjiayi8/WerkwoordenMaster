@@ -14,27 +14,41 @@ from itertools import combinations
 from openpyxl import load_workbook
 import logging
 import random
-from MainWindow import Ui_MainWindow
-
+from MainWindow2 import Ui_MainWindow
+from googletrans import Translator, LANGUAGES
+import itertools
+import re
 
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
         QtWidgets.QMainWindow.__init__(self, parent=parent)
         self.setupUi(self)
+        self.setWindowIcon(QtGui.QIcon('icon.png'))
         self.xlsxFile = os.path.join(os.getcwd(), 'Werkwoorden_Lijst.xlsx')
-        self.df = pd.read_excel(self.xlsxFile)
-        self.df = self.df.drop_duplicates(subset = ["Infinitief"])
-        self.df = self.df.fillna('').reset_index(drop=True)
-#        self.df_backup = self.df.copy()
+        self.translator = Translator()
+        self.defaultLangs = ['en', 'nl']
+
+        self.initialiseMenuBar()
+        self.initialiseWidgets()
+        self.initialiseTable()
+
+        logging.debug("Initialisation is done")
+
+    def initialiseMenuBar(self):
+        # Create new action
+        openAction = QtWidgets.QAction('&Open', self)        
+        openAction.setShortcut('Ctrl+O')
+        openAction.setStatusTip('Open document')
+        openAction.triggered.connect(self.fileMenuOpenAction)
+        # Menu bar
+        menuBar = self.menuBar()
+        fileMenu = menuBar.addMenu('&File')
+        fileMenu.addAction(openAction)
+        logging.debug("Initialise meub bar done")
+    
+    def initialiseWidgets(self):
         self.labelSearchResult.setHidden(True)
         self.textEditSearch.setAlignment(QtCore.Qt.AlignBottom)
-#        central_widget = QtWidgets.QWidget(self)              # Create a central widget
-#        self.setCentralWidget(central_widget)       # Install the central widget
-# 
-#        grid_layout = QtWidgets.QGridLayout(self)         # Create QGridLayout
-#        central_widget.setLayout(grid_layout)   # Set this layout in central widget
-# 
-        self.initialiseTable()
         self.isShownMainTable = True
         self.buttonCheck.clicked.connect(self.buttonCheck_on_click)
         self.buttonMemory.clicked.connect(self.buttonMemory_on_click)
@@ -42,19 +56,79 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.buttonSave.clicked.connect(self.buttonSave_on_click)
         self.buttonQuit.clicked.connect(self.buttonQuit_on_click)
         self.textEditSearch.textChanged.connect(self.search_as_you_type)
-#        self.tableWidget.cellChanged.connect(self.prepareForSaving)
+        self.buttonTranslate.clicked.connect(self.buttonTranslate_on_click)
         self.tableWidget.itemChanged.connect(self.prepareForSaving)
         self.buttonCheck.setHidden(True)
         self.buttonSave.setHidden(True)
         self.buttonBack.setHidden(True)
+        self.labelFrom.setHidden(True)
+        self.labelTo.setHidden(True)
+        self.comboBoxRangeStart.setHidden(True)
+        self.comboBoxRangeEnd.setHidden(True)
         self.memoryMode = False
         self.resetMode = False
         self.searchMode = False
-        logging.debug("Initialisation is done")
-#        grid_layout.addWidget(label1, 0, 0) 
-#        grid_layout.addWidget(button1, 1, 0) 
-#        grid_layout.addWidget(button2, 2, 0) 
-#        grid_layout.addWidget(self.table, 2, 1)   # Adding the table to the grid
+        self.langDict = dict((v.capitalize(),k) for k, v in LANGUAGES.items())
+        self.comboBoxLang.addItems(self.langDict.keys())
+        self.comboBoxLang.currentIndexChanged.connect(self.changeTranslationLang)
+        self.comboBoxLang.setCurrentText('English')
+        difficulties = [str(i+1) for i in range(4)]
+        self.comboBoxDifficulty.addItems(difficulties)
+        self.plainTextInput.installEventFilter(self)
+        self.plainTextInput.hasSelected = False
+        self.comboBoxRangeStart.currentIndexChanged.connect(self.changeStartWord)
+        self.prepareForMemoryMode()
+        logging.debug("intialise widgets done")
+        
+    def changeStartWord(self):
+        items = [str(i+1) for i in range(len(self.df))]
+        starItem = self.comboBoxRangeStart.currentText()
+        startIdx = items.index(starItem)
+        if not self.memoryMode:
+            self.comboBoxRangeEnd.addItems(items[startIdx:])
+            self.comboBoxRangeEnd.setCurrentText(items[-1])
+        else:
+            currentEndIdx = items.index(self.comboBoxRangeEnd.currentText())
+            self.comboBoxRangeEnd.addItems(items[startIdx:])
+            if currentEndIdx < startIdx:
+                self.comboBoxRangeEnd.setCurrentText(items[-1])
+    
+    def prepareForMemoryMode(self):
+        if not self.memoryMode:
+            self.buttonCheck.setHidden(True)
+            self.buttonBack.setHidden(True)
+            self.labelFrom.setHidden(True)
+            self.labelTo.setHidden(True)
+            self.comboBoxRangeStart.setHidden(True)
+            self.comboBoxRangeEnd.setHidden(True)
+        else:
+            self.buttonCheck.setHidden(False)
+            self.buttonBack.setHidden(False)
+            self.buttonSave.setHidden(True)
+            self.labelFrom.setHidden(False)
+            self.labelTo.setHidden(False)
+            self.comboBoxRangeStart.setHidden(False)
+            self.comboBoxRangeEnd.setHidden(False)
+    
+    
+    def fileMenuOpenAction(self):
+        files_types = "CSV (*.csv);;Microsoft spreedsheets (*.xlsx);;Microsoft spreedsheets (*.xls)"
+        options = QtWidgets.QFileDialog.Options()
+        options |= QtWidgets.QFileDialog.DontUseNativeDialog
+        fileName, _ = QtWidgets.QFileDialog.getOpenFileName(self,"QtWidgets.QFileDialog.getOpenFileName()", "", files_types, options=options)
+        if fileName:
+            self.xlsxFile = fileName
+            self.initialiseTable()
+            logging.debug("Openning file {}".format(fileName))
+    
+    def changeTranslationLang(self):
+        langText = self.comboBoxLang.currentText()
+        lang     = self.langDict[langText]
+        if lang in self.defaultLangs:
+            self.plainTextOutput2.setHidden(True)
+        else:
+            self.plainTextOutput2.setHidden(False)
+        
     
     def prepareForSaving(self, item):
         if not self.resetMode and not self.searchMode:
@@ -68,10 +142,18 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 #            self.df_backup.iloc[row, col] = text
 #            self.tableWidget.resizeColumnsToContents()
     
-#    def keyPressEvent(self, e):
-#        print(e.key())
-#        if e.key() == QtCore.Qt.Key_F5:
-#            self.close()
+    def eventFilter(self, widget, event):
+        if (event.type() == QtCore.QEvent.KeyPress and
+            widget is self.plainTextInput):
+            key = event.key()
+            modifiers = event.modifiers()
+            if (modifiers == QtCore.Qt.ControlModifier) and (key == QtCore.Qt.Key_Return):
+                self.plainTextInput.appendPlainText('')
+                return True
+            if key == QtCore.Qt.Key_Return:
+                self.buttonTranslate_on_click()
+                return True
+        return QtWidgets.QWidget.eventFilter(self, widget, event)
     
     def resetTable(self):
         self.resetMode = True
@@ -79,12 +161,39 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.resetMode = False
         logging.debug("reseting table done")
         
+    def buttonTranslate_on_click(self):
+        input_str = self.plainTextInput.toPlainText()
+        chosen_lang = self.langDict[self.comboBoxLang.currentText()]
+        langs = self.defaultLangs + [chosen_lang.lower()]
+        langs = list(set(langs))#remove duplicated
+        lang_input = self.translator.detect(input_str).lang.lower()
+        logging.debug("Input lange is {}".format(lang_input))
+        if lang_input in langs:
+            langs.remove(lang_input)
+            for i in range(len(langs)):
+                if i == 0:
+                    translated = self.translator.translate(input_str, src=lang_input, dest=langs[i])
+                    self.plainTextOutput1.setPlainText(translated.text)
+                elif not self.plainTextOutput2.isHidden():
+                    translated = self.translator.translate(input_str, src=lang_input, dest=langs[i])
+                    self.plainTextOutput2.setPlainText(translated.text)
+        else:
+            if lang_input in LANGUAGES:
+                chosen_lang = LANGUAGES[lang_input]
+                self.comboBoxLang.setCurrentText(chosen_lang.capitalize())
+                self.buttonTranslate_on_click()
+            else:
+                self.plainTextOutput1.setPlaceholderText("Unknown lang: {}".format(lang_input))
     
     def buttonBack_on_click(self):
         self.resetTable()
         self.memoryMode = False
-        self.buttonCheck.setHidden(True)
-        self.buttonBack.setHidden(True)
+        self.prepareForMemoryMode()
+    
+    def checkEquality(self, userStr, correctStr):
+        userStrList     = sorted(re.findall(r"[\w']+", userStr.lower()))
+        correctStrList  = sorted(re.findall(r"[\w']+", correctStr.lower()))
+        return userStrList == correctStrList
     
     def buttonCheck_on_click(self):
         for r in range(self.tableWidget.rowCount()):
@@ -92,7 +201,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 value_correct = self.df_gap_origin.iloc[r,c]
                 if type(value_correct) == str and self.df_gap.iloc[r,c] != value_correct: #must be a gap
                     value_user = self.tableWidget.item(r, c).text()
-                    if value_user == value_correct:# correct answer mark as green
+                    if self.checkEquality(value_user, value_correct):# correct answer mark as green
                         self.tableWidget.item(r,c).setForeground(QtGui.QBrush(QtGui.QColor(0, 255, 0)))
                     else:#fill correct value and mark as red
                         self.tableWidget.setItem(r, c, QtWidgets.QTableWidgetItem(value_correct))
@@ -105,7 +214,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         logging.debug("start to search")
         self.labelSearchResult.setHidden(True)
         self.searchMode = True
-        string = self.textEditSearch.toPlainText()
+        string = self.textEditSearch.text()
         if len(string) > 0:
             logging.debug("search word {}".format(string))
             if string in self.corpusDict:
@@ -145,8 +254,16 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         logging.debug("save table is done")
     
     def buttonMemory_on_click(self):
-        difficulty = 1
-        df = self.df.sample(10).copy().reset_index(drop=True)
+        difficulty = int(self.comboBoxDifficulty.currentText())
+        if not self.memoryMode:
+            items = [str(i+1) for i in range(len(self.df))]
+            self.comboBoxRangeStart.addItems(items[:-1])
+        startIdx = int(self.comboBoxRangeStart.currentText())-1
+        endIdx   = int(self.comboBoxRangeEnd.currentText())
+        numSample = endIdx - startIdx
+        numSample = min([numSample, 10])
+        df_temp = self.df[startIdx:endIdx].copy()
+        df = df_temp.sample(numSample).copy().reset_index(drop=True)
         self.df_gap_origin = df.copy()
         df_gap = df.copy()
         memChoice = self.comboBox.currentText()
@@ -165,10 +282,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 df_gap.loc[r, gap] = ''
         self.updateTable(df_gap, gapMode=True)
         self.df_gap = df_gap
-        self.buttonCheck.setHidden(False)
-        self.buttonBack.setHidden(False)
-        self.buttonSave.setHidden(True)
         self.memoryMode = True
+        self.prepareForMemoryMode()
         logging.debug("enter memory mode")
         
     
@@ -209,7 +324,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     
     
     def initialiseTable(self):
+        self.df = pd.read_excel(self.xlsxFile)
         self.columnNames = list(self.df.columns)
+        self.df = self.df.drop_duplicates(subset = [self.columnNames[1]])
+        self.df = self.df.fillna('').reset_index(drop=True)
         self.numTableCol = len(self.columnNames)
         self.tableWidget.setColumnCount(self.numTableCol)     #Set number of columns
         self.tableWidget.setRowCount(len(self.df))        # and one row
@@ -220,9 +338,11 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.updateCorpusDict()
         
         # Set the list
+        self.comboBox.clear()
         self.comboBox.addItems(['Randomly']+self.columnNames)
 #        self.tableWidths = [self.tableWidget.columnWidth(i) for i in range()
 #        self.tableWidget.Box.
+        logging.debug("intialise table done")
         
     def emptyTable(self):
         for r in range(self.tableWidget.rowCount()):
@@ -261,7 +381,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
  
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, filename=os.path.join(os.getcwd(), 'log.txt'), format='%(asctime)s :: %(levelname)s :: %(message)s')
-    import sys
+    os.environ['QT_IM_MODULE'] = 'fcitx'
+    # os.environ['LD_LIBRARY_PATH'] = '/usr/lib/x86_64-linux-gnu/qt5/plugins/platforminputcontexts/libfcitxplatforminputcontextplugin.so'
 #    app = QtWidgets.QApplication(sys.argv)
     app = QtCore.QCoreApplication.instance()
     if app is None:
