@@ -9,7 +9,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>857</width>
+    <width>907</width>
     <height>607</height>
    </rect>
   </property>
@@ -149,6 +149,9 @@
        </widget>
       </item>
       <item>
+       <widget class="QComboBox" name="comboBoxRangeType"/>
+      </item>
+      <item>
        <widget class="QLabel" name="labelFrom">
         <property name="text">
          <string>From</string>
@@ -156,7 +159,11 @@
        </widget>
       </item>
       <item>
-       <widget class="QComboBox" name="comboBoxRangeStart"/>
+       <widget class="QComboBox" name="comboBoxRangeStart">
+        <property name="sizeAdjustPolicy">
+         <enum>QComboBox::AdjustToContents</enum>
+        </property>
+       </widget>
       </item>
       <item>
        <widget class="QLabel" name="labelTo">
@@ -166,7 +173,11 @@
        </widget>
       </item>
       <item>
-       <widget class="QComboBox" name="comboBoxRangeEnd"/>
+       <widget class="QComboBox" name="comboBoxRangeEnd">
+        <property name="sizeAdjustPolicy">
+         <enum>QComboBox::AdjustToContents</enum>
+        </property>
+       </widget>
       </item>
       <item>
        <spacer name="horizontalSpacer">
@@ -305,16 +316,6 @@
      </layout>
     </item>
    </layout>
-  </widget>
-  <widget class="QMenuBar" name="menubar">
-   <property name="geometry">
-    <rect>
-     <x>0</x>
-     <y>0</y>
-     <width>857</width>
-     <height>20</height>
-    </rect>
-   </property>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
  </widget>

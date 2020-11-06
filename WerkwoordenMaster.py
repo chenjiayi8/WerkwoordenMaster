@@ -16,7 +16,7 @@ import logging
 import random
 from MainWindow2 import Ui_MainWindow
 from googletrans import Translator, LANGUAGES
-import itertools
+#import itertools
 import re
 
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
@@ -28,23 +28,23 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.translator = Translator()
         self.defaultLangs = ['en', 'nl']
 
-        self.initialiseMenuBar()
+        # self.initialiseMenuBar()
         self.initialiseWidgets()
         self.initialiseTable()
 
         logging.debug("Initialisation is done")
 
-    def initialiseMenuBar(self):
-        # Create new action
-        openAction = QtWidgets.QAction('&Open', self)        
-        openAction.setShortcut('Ctrl+O')
-        openAction.setStatusTip('Open document')
-        openAction.triggered.connect(self.fileMenuOpenAction)
-        # Menu bar
-        menuBar = self.menuBar()
-        fileMenu = menuBar.addMenu('&File')
-        fileMenu.addAction(openAction)
-        logging.debug("Initialise meub bar done")
+    # def initialiseMenuBar(self):
+    #     # Create new action
+    #     openAction = QtWidgets.QAction('&Open', self)        
+    #     openAction.setShortcut('Ctrl+O')
+    #     openAction.setStatusTip('Open document')
+    #     openAction.triggered.connect(self.fileMenuOpenAction)
+    #     # Menu bar
+    #     menuBar = self.menuBar()
+    #     fileMenu = menuBar.addMenu('&File')
+    #     fileMenu.addAction(openAction)
+    #     logging.debug("Initialise meub bar done")
     
     def initialiseWidgets(self):
         self.labelSearchResult.setHidden(True)
@@ -74,28 +74,53 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.comboBoxLang.setCurrentText('English')
         difficulties = [str(i+1) for i in range(4)]
         self.comboBoxDifficulty.addItems(difficulties)
+        self.comboBoxRangeType.addItems(['Alphabet', 'Number'])
+        self.comboBoxRangeType.currentIndexChanged.connect(self.changeRangeType)
         self.plainTextInput.installEventFilter(self)
         self.plainTextInput.hasSelected = False
         self.comboBoxRangeStart.currentIndexChanged.connect(self.changeStartWord)
         self.prepareForMemoryMode()
         logging.debug("intialise widgets done")
         
-    def changeStartWord(self):
-        items = [str(i+1) for i in range(len(self.df))]
-        starItem = self.comboBoxRangeStart.currentText()
-        startIdx = items.index(starItem)
-        if not self.memoryMode:
-            self.comboBoxRangeEnd.addItems(items[startIdx:])
-            self.comboBoxRangeEnd.setCurrentText(items[-1])
+    
+    def changeRangeType(self):
+        items = self.getMemoryItems()
+        self.comboBoxRangeStart.clear()
+        self.comboBoxRangeStart.addItems(items)
+        self.comboBoxRangeStart.adjustSize()
+        self.comboBoxRangeEnd.clear()
+        self.comboBoxRangeEnd.addItems(items)
+        self.comboBoxRangeEnd.adjustSize()
+        self.comboBoxRangeEnd.setCurrentText(items[-1])
+    
+    def getMemoryItems(self):
+        if self.comboBoxRangeType.currentText() == 'Alphabet':
+            items = sorted(list(set(list(self.df['Group']))))#sorted group
         else:
-            currentEndItem = self.comboBoxRangeEnd.currentText()
-            currentEndIdx = items.index(currentEndItem)
-            self.comboBoxRangeEnd.clear()
-            self.comboBoxRangeEnd.addItems(items[startIdx:])
-            if currentEndIdx < startIdx:
+            items = [str(i+1) for i in range(len(self.df))]
+        return items
+    
+    def changeStartWord(self):
+        # items = sorted(list(set(list(self.df['Group']))))#sorted group
+        items = self.getMemoryItems()
+        starItem = self.comboBoxRangeStart.currentText()
+        if starItem in items:
+            startIdx = items.index(starItem)
+            if not self.memoryMode:
+                self.comboBoxRangeEnd.addItems(items[startIdx:])
                 self.comboBoxRangeEnd.setCurrentText(items[-1])
             else:
-                self.comboBoxRangeEnd.setCurrentText(currentEndItem)
+                currentEndItem = self.comboBoxRangeEnd.currentText()
+                self.comboBoxRangeEnd.clear()
+                self.comboBoxRangeEnd.addItems(items[startIdx:])
+                if currentEndItem in items:
+                    currentEndIdx = items.index(currentEndItem)
+                    if currentEndIdx < startIdx:
+                        self.comboBoxRangeEnd.setCurrentText(items[-1])
+                    else:
+                        self.comboBoxRangeEnd.setCurrentText(currentEndItem)
+                else:
+                    self.comboBoxRangeEnd.setCurrentText(items[-1])
     
     def prepareForMemoryMode(self):
         if not self.memoryMode:
@@ -105,6 +130,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.labelTo.setHidden(True)
             self.comboBoxRangeStart.setHidden(True)
             self.comboBoxRangeEnd.setHidden(True)
+            self.comboBoxRangeType.setHidden(True)
         else:
             self.buttonCheck.setHidden(False)
             self.buttonBack.setHidden(False)
@@ -113,6 +139,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.labelTo.setHidden(False)
             self.comboBoxRangeStart.setHidden(False)
             self.comboBoxRangeEnd.setHidden(False)
+            self.comboBoxRangeType.setHidden(False)
     
     
     def fileMenuOpenAction(self):
@@ -181,13 +208,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 elif not self.plainTextOutput2.isHidden():
                     translated = self.translator.translate(input_str, src=lang_input, dest=langs[i])
                     self.plainTextOutput2.setPlainText(translated.text)
-        else:
-            if lang_input in LANGUAGES:
-                chosen_lang = LANGUAGES[lang_input]
-                self.comboBoxLang.setCurrentText(chosen_lang.capitalize())
-                self.buttonTranslate_on_click()
-            else:
-                self.plainTextOutput1.setPlaceholderText("Unknown lang: {}".format(lang_input))
+        # else:
+            # if lang_input in LANGUAGES:
+                # chosen_lang = LANGUAGES[lang_input]
+                # self.comboBoxLang.setCurrentText(chosen_lang.capitalize())
+                # self.buttonTranslate_on_click()
+            # else:
+                # self.plainTextOutput1.setPlaceholderText("Unknown lang: {}".format(lang_input))
     
     def buttonBack_on_click(self):
         self.resetTable()
@@ -243,7 +270,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def getCurrentTable(self):
         numRow = self.tableWidget.rowCount()-1
         numCol = self.tableWidget.columnCount()
-        self.df_backup = pd.DataFrame(np.zeros([numRow, numCol], dtype=float), columns = self.df.columns)
+        self.df_backup = pd.DataFrame(np.zeros([numRow, numCol], dtype=float), columns=self.columnNames)
         for r in range(numRow):
             for c in range(numCol):
                 self.df_backup.iloc[r,c] = self.tableWidget.item(r,c).text()
@@ -259,14 +286,23 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     
     def buttonMemory_on_click(self):
         difficulty = int(self.comboBoxDifficulty.currentText())
+        # items = sorted(list(set(list(self.df['Group']))))#sorted group
+        items = self.getMemoryItems()
         if not self.memoryMode:
-            items = [str(i+1) for i in range(len(self.df))]
-            self.comboBoxRangeStart.addItems(items[:-1])
-        startIdx = int(self.comboBoxRangeStart.currentText())-1
-        endIdx   = int(self.comboBoxRangeEnd.currentText())
+            # items = [str(i+1) for i in range(len(self.df))]
+            self.comboBoxRangeStart.addItems(items)
+        # 
+        if self.comboBoxRangeType.currentText() == 'Alphabet':
+            startIdx = self.df[self.df['Group']==self.comboBoxRangeStart.currentText()].head(1).index[0]
+            endIdx = self.df[self.df['Group']==self.comboBoxRangeEnd.currentText()].tail(1).index[0]
+        else:
+            startIdx = int(items.index(self.comboBoxRangeStart.currentText()))
+            endIdx   = int(items.index(self.comboBoxRangeEnd.currentText()))+1
         numSample = endIdx - startIdx
         numSample = min([numSample, 10])
         df_temp = self.df[startIdx:endIdx].copy()
+        # print('Length: {}\n {}'.format(len(df_temp), df_temp))
+        self.df_temp = df_temp.copy()
         df = df_temp.sample(numSample).copy().reset_index(drop=True)
         self.df_gap_origin = df.copy()
         df_gap = df.copy()
@@ -328,10 +364,15 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     
     
     def initialiseTable(self):
+        logging.debug('Trying to read {}'.format(self.xlsxFile))
         self.df = pd.read_excel(self.xlsxFile)
+        logging.debug('Read {} done'.format(self.xlsxFile))
         self.columnNames = list(self.df.columns)
         self.df = self.df.drop_duplicates(subset = [self.columnNames[1]])
-        self.df = self.df.fillna('').reset_index(drop=True)
+        self.df = self.df.fillna('')
+        self.df = self.df.sort_values(by=['Infinitief']).reset_index(drop=True)
+        # self.df['Group'] = self.df['Group']
+        self.df['Group'] = self.df['Infinitief'].apply(lambda x: x[0].upper())#Group by first letter
         self.numTableCol = len(self.columnNames)
         self.tableWidget.setColumnCount(self.numTableCol)     #Set number of columns
         self.tableWidget.setRowCount(len(self.df))        # and one row
