@@ -14,7 +14,7 @@ from itertools import combinations
 from openpyxl import load_workbook
 import logging
 import random
-from MainWindow2 import Ui_MainWindow
+from MainWindow3 import Ui_MainWindow
 from googletrans import Translator, LANGUAGES
 #import itertools
 import re
@@ -54,7 +54,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.buttonMemory.clicked.connect(self.buttonMemory_on_click)
         self.buttonBack.clicked.connect(self.buttonBack_on_click)
         self.buttonSave.clicked.connect(self.buttonSave_on_click)
-        self.buttonQuit.clicked.connect(self.buttonQuit_on_click)
+        self.buttonQuit1.clicked.connect(self.buttonQuit_on_click)
+        self.buttonQuit2.clicked.connect(self.buttonQuit_on_click)
         self.textEditSearch.textChanged.connect(self.search_as_you_type)
         self.buttonTranslate.clicked.connect(self.buttonTranslate_on_click)
         self.tableWidget.itemChanged.connect(self.prepareForSaving)
@@ -80,8 +81,87 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.plainTextInput.hasSelected = False
         self.comboBoxRangeStart.currentIndexChanged.connect(self.changeStartWord)
         self.prepareForMemoryMode()
+
+        
+        # note area
+        self.checkBox.toggled.connect(self.checkBox_on_stateChanged)
+        self.checkBox_on_stateChanged()
+        self.pushButtonNoteOpen.clicked.connect(self.buttonNoteOpen_on_click)
+        self.pushButtonNoteSave.clicked.connect(self.buttonNoteSave_on_click)
+        self.pushButtonNoteNew.clicked.connect(self.buttonNoteNew_on_click)
+        self.notePath = ''
+
+        openAction = QtWidgets.QAction('&Open', self)        
+        openAction.setShortcut('Ctrl+O')
+        openAction.setStatusTip('Open document')
+        openAction.triggered.connect(self.fileMenuOpenAction)
+        # self.checkBox.checkStateSet()
         logging.debug("intialise widgets done")
         
+    def checkBox_on_stateChanged(self):
+        if self.checkBox.checkState() == 0:
+            self.pushButtonNoteOpen.setHidden(True)
+            self.pushButtonNoteSave.setHidden(True)
+            self.pushButtonNoteNew.setHidden(True)
+            self.buttonQuit1.setHidden(False)
+            self.buttonQuit2.setHidden(True)
+            self.textEditNote.setHidden(True)
+        else:
+            self.pushButtonNoteOpen.setHidden(False)
+            self.pushButtonNoteSave.setHidden(False)
+            self.pushButtonNoteNew.setHidden(False)
+            self.buttonQuit1.setHidden(True)
+            self.buttonQuit2.setHidden(False)
+            self.textEditNote.setHidden(False)
+    
+    def buttonNoteNew_on_click(self):
+        self.textEditNote.clear()
+        self.notePath = ''
+    
+    def buttonNoteOpen_on_click(self):
+        files_types = "Text Document (*.txt)"
+        options = QtWidgets.QFileDialog.Options()
+        options |= QtWidgets.QFileDialog.DontUseNativeDialog
+        fileName, _ = QtWidgets.QFileDialog.getOpenFileName(self,"Choose note file", "", files_types, options=options)
+        if fileName:
+            with open(fileName, 'rt') as f:
+                self.notePath = fileName
+                self.textEditNote.clear()
+                for line in f.readlines():
+                    line = line.replace('\n', '')
+                    self.textEditNote.append(line)
+                logging.debug("Openning note {}".format(fileName))   
+        # cursor = self.textEditNote.textCursor()
+        # selectedText = cursor.selectedText()
+        # old_charfmt  = self.textEditNote.currentCharFormat()
+        # cursor.movePosition(cursor.End)
+        # new_charfmt  = old_charfmt
+        # new_charfmt.setUnderlineColor(QtGui.QColor('Red'))
+        # new_charfmt.setUnderlineStyle(QtGui.QTextCharFormat.WaveUnderline)
+        # self.textEditNote.setCurrentCharFormat(new_charfmt)
+        # self.textEditNote.append(selectedText)
+        # self.textEditNote.setCurrentCharFormat(old_charfmt)
+        # cursor.insertHtml("<span style=\"text-decoration: underline;\">"+selectedText+"</span>"); # make them ugly
+        # cursor.insertHtml("<span style=\"color:blue;text-decoration:underline\"><span style=\"color:red\">"+selectedText+"</span></span>")
+        # pass
+        # cursor.insertHtml("<span style=\" text-decoration-color:red;text-decoration:underline\"><span style=\"text-decoration-style: wavy\">"+selectedText+"</span></span>")
+    
+    def buttonNoteSave_on_click(self):
+        if len(self.notePath) == 0:
+            files_types = "Text Document (*.txt)"
+            options = QtWidgets.QFileDialog.Options()
+            options |= QtWidgets.QFileDialog.DontUseNativeDialog
+            fileName, _ = QtWidgets.QFileDialog.getSaveFileName(self,"Save note file", "", files_types, options=options)
+            if fileName:
+                self.notePath = fileName
+                logging.debug("Saving note {}".format(self.notePath))   
+        else:   
+            logging.debug("Appending note {}".format(self.notePath))
+        if len(self.notePath) > 0:
+            with open(self.notePath, 'wt') as f:
+                f.write(self.textEditNote.toPlainText())
+                logging.debug("Writting note {}".format(self.notePath))  
+    
     
     def changeRangeType(self):
         items = self.getMemoryItems()
@@ -151,6 +231,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.xlsxFile = fileName
             self.initialiseTable()
             logging.debug("Openning file {}".format(fileName))
+            
     
     def changeTranslationLang(self):
         langText = self.comboBoxLang.currentText()
@@ -197,17 +278,20 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         chosen_lang = self.langDict[self.comboBoxLang.currentText()]
         langs = self.defaultLangs + [chosen_lang.lower()]
         langs = list(set(langs))#remove duplicated
-        lang_input = self.translator.detect(input_str).lang.lower()
-        logging.debug("Input lange is {}".format(lang_input))
-        if lang_input in langs:
-            langs.remove(lang_input)
-            for i in range(len(langs)):
-                if i == 0:
-                    translated = self.translator.translate(input_str, src=lang_input, dest=langs[i])
-                    self.plainTextOutput1.setPlainText(translated.text)
-                elif not self.plainTextOutput2.isHidden():
-                    translated = self.translator.translate(input_str, src=lang_input, dest=langs[i])
-                    self.plainTextOutput2.setPlainText(translated.text)
+        try:
+            lang_input = self.translator.detect(input_str).lang.lower()
+            logging.debug("Input lange is {}".format(lang_input))
+            if lang_input in langs:
+                langs.remove(lang_input)
+                for i in range(len(langs)):
+                    if i == 0:
+                        translated = self.translator.translate(input_str, src=lang_input, dest=langs[i])
+                        self.plainTextOutput1.setPlainText(translated.text)
+                    elif not self.plainTextOutput2.isHidden():
+                        translated = self.translator.translate(input_str, src=lang_input, dest=langs[i])
+                        self.plainTextOutput2.setPlainText(translated.text)
+        except:
+            pass
         # else:
             # if lang_input in LANGUAGES:
                 # chosen_lang = LANGUAGES[lang_input]
@@ -427,8 +511,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, filename=os.path.join(os.getcwd(), 'log.txt'), format='%(asctime)s :: %(levelname)s :: %(message)s')
     os.environ['QT_IM_MODULE'] = 'fcitx'
-    # os.environ['LD_LIBRARY_PATH'] = '/usr/lib/x86_64-linux-gnu/qt5/plugins/platforminputcontexts/libfcitxplatforminputcontextplugin.so'
-#    app = QtWidgets.QApplication(sys.argv)
     app = QtCore.QCoreApplication.instance()
     if app is None:
         app = QtWidgets.QApplication(sys.argv)
