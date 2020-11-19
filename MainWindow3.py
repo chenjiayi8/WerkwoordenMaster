@@ -12,7 +12,7 @@ class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
         MainWindow.setEnabled(True)
-        MainWindow.resize(909, 632)
+        MainWindow.resize(1032, 632)
         MainWindow.setMinimumSize(QtCore.QSize(0, 500))
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
@@ -22,6 +22,12 @@ class Ui_MainWindow(object):
         self.verticalLayout_2.setObjectName("verticalLayout_2")
         self.horizontalLayout = QtWidgets.QHBoxLayout()
         self.horizontalLayout.setObjectName("horizontalLayout")
+        self.labelChooseTable = QtWidgets.QLabel(self.centralwidget)
+        self.labelChooseTable.setObjectName("labelChooseTable")
+        self.horizontalLayout.addWidget(self.labelChooseTable)
+        self.comboBoxTable = QtWidgets.QComboBox(self.centralwidget)
+        self.comboBoxTable.setObjectName("comboBoxTable")
+        self.horizontalLayout.addWidget(self.comboBoxTable)
         self.labelSearch = QtWidgets.QLabel(self.centralwidget)
         self.labelSearch.setObjectName("labelSearch")
         self.horizontalLayout.addWidget(self.labelSearch)
@@ -173,6 +179,7 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "Werkwoorden Master"))
+        self.labelChooseTable.setText(_translate("MainWindow", "Choose"))
         self.labelSearch.setText(_translate("MainWindow", "Search:"))
         self.textEditSearch.setToolTip(_translate("MainWindow", "Search as you type"))
         self.labelSearchResult.setText(_translate("MainWindow", "TextLabel"))

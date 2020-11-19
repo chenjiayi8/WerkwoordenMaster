@@ -25,6 +25,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.setupUi(self)
         self.setWindowIcon(QtGui.QIcon('icon.png'))
         self.xlsxFile = os.path.join(os.getcwd(), 'Werkwoorden_Lijst.xlsx')
+        self.chosenTable = ''
         self.translator = Translator()
         self.defaultLangs = ['en', 'nl']
 
@@ -98,6 +99,24 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # self.checkBox.checkStateSet()
         logging.debug("intialise widgets done")
         
+    def comboBoxTable_on_change(self):
+        sheet_name = self.comboBoxTable.currentText()
+        self.df = self.dfs[sheet_name]
+        self.columnNames = list(self.df.columns)
+        self.df = self.df.drop_duplicates(subset = [self.columnNames[1]])
+        self.df = self.df.fillna('')
+        self.df = self.df.sort_values(by=['Infinitief']).reset_index(drop=True)
+        # self.df['Group'] = self.df['Group']
+        self.df['Group'] = self.df['Infinitief'].apply(lambda x: x[0].upper())#Group by first letter
+        self.numTableCol = len(self.columnNames)
+        self.tableWidget.setColumnCount(self.numTableCol)     #Set number of columns
+        self.tableWidget.setRowCount(len(self.df))        # and one row
+ 
+        # Set the table
+        self.tableWidget.setHorizontalHeaderLabels(self.columnNames)
+        self.updateTable()
+        self.updateCorpusDict()
+    
     def checkBox_on_stateChanged(self):
         if self.checkBox.checkState() == 0:
             self.pushButtonNoteOpen.setHidden(True)
@@ -447,24 +466,17 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                             self.corpusDict[item] = [r]
                     
     
+    
     def initialiseTable(self):
         logging.debug('Trying to read {}'.format(self.xlsxFile))
-        self.df = pd.read_excel(self.xlsxFile)
+        self.dfs = pd.read_excel(self.xlsxFile, sheet_name=None)
+        sheet_names = [sheet_name for sheet_name in self.dfs.keys() if len(re.findall('[0-9]', sheet_name)) == 0]
+        self.comboBoxTable.addItems(sheet_names)
+        self.comboBoxTable.setCurrentText(sheet_names[0])
+        self.comboBoxTable.currentIndexChanged.connect(self.comboBoxTable_on_change)
         logging.debug('Read {} done'.format(self.xlsxFile))
-        self.columnNames = list(self.df.columns)
-        self.df = self.df.drop_duplicates(subset = [self.columnNames[1]])
-        self.df = self.df.fillna('')
-        self.df = self.df.sort_values(by=['Infinitief']).reset_index(drop=True)
-        # self.df['Group'] = self.df['Group']
-        self.df['Group'] = self.df['Infinitief'].apply(lambda x: x[0].upper())#Group by first letter
-        self.numTableCol = len(self.columnNames)
-        self.tableWidget.setColumnCount(self.numTableCol)     #Set number of columns
-        self.tableWidget.setRowCount(len(self.df))        # and one row
- 
-        # Set the table
-        self.tableWidget.setHorizontalHeaderLabels(self.columnNames)
-        self.updateTable()
-        self.updateCorpusDict()
+        self.comboBoxTable_on_change()
+
         
         # Set the list
         self.comboBox.clear()

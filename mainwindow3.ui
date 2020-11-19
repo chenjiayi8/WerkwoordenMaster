@@ -9,7 +9,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>909</width>
+    <width>1032</width>
     <height>632</height>
    </rect>
   </property>
@@ -28,6 +28,16 @@
      <layout class="QVBoxLayout" name="verticalLayout_2">
       <item>
        <layout class="QHBoxLayout" name="horizontalLayout">
+        <item>
+         <widget class="QLabel" name="labelChooseTable">
+          <property name="text">
+           <string>Choose</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="comboBoxTable"/>
+        </item>
         <item>
          <widget class="QLabel" name="labelSearch">
           <property name="text">
